@@ -1,4 +1,6 @@
 import fastapi
+import pandas as pd
+import pickle
 
 app = fastapi.FastAPI()
 
