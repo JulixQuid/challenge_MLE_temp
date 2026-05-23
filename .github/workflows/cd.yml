@@ -1,0 +1,55 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------
+      # Authenticate to GCP
+      # -----------------------------
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # -----------------------------
+      # Deploy to Cloud Run
+      # -----------------------------
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          gcloud run deploy delay-api \
+            --source . \
+            --region ${{ secrets.GCP_REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --allow-unauthenticated \
+            --format="value(status.url)" > url.txt
+
+          echo "SERVICE_URL=$(cat url.txt)" >> $GITHUB_ENV
+
+      # -----------------------------
+      # Update Makefile URL (optional but VERY useful)
+      # -----------------------------
+      - name: Update STRESS_URL in Makefile
+        run: |
+          sed -i "s|STRESS_URL = .*|STRESS_URL = $SERVICE_URL|g" Makefile
+
+      # -----------------------------
+      # Output deployed URL
+      # -----------------------------
+      - name: Show deployed URL
+        run: |
+          echo "Deployed API URL: $SERVICE_URL"
