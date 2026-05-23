@@ -4,7 +4,10 @@ from typing import Tuple, Union, List
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+import pickle
+import json
 
+SAVE_ON_FIT =  True
 
 class DelayModel:
     """
@@ -44,6 +47,7 @@ class DelayModel:
         """
         self.model = None
         self.data = None
+        self._feature_columns = None
 
     def get_period_day(self, date: str) -> str:
         """
@@ -104,7 +108,7 @@ class DelayModel:
             - Jan 1 to Mar 3
             - Jul 15 to Jul 31
             - Sep 11 to Sep 30
-
+s.sav
         Args:
             fecha:
                 Flight date in format '%Y-%m-%d %H:%M:%S'.
@@ -251,23 +255,20 @@ class DelayModel:
         """
 
         data = data.copy()
-
-        # Feature engineering
-        data['period_day'] = data['Fecha-I'].apply(
-            self.get_period_day
-        )
-
-        data['high_season'] = data['Fecha-I'].apply(
-            self.is_high_season
-        )
-
-        data['min_diff'] = data.apply(
-            self.get_min_diff,
-            axis=1
-        )
-
-        # Target generation
         if target_column is not None:
+            # Feature engineering
+            data['period_day'] = data['Fecha-I'].apply(
+                self.get_period_day
+            )
+
+            data['high_season'] = data['Fecha-I'].apply(
+                self.is_high_season
+            )
+
+            data['min_diff'] = data.apply(
+                self.get_min_diff,
+                axis=1
+            )
 
             threshold_in_minutes = 15
 
@@ -348,6 +349,11 @@ class DelayModel:
             features,
             target
         )
+        self._feature_columns = list(features.columns)
+        if SAVE_ON_FIT:
+            self.save("challenge")
+
+            
 
     def predict(
         self,
@@ -368,5 +374,24 @@ class DelayModel:
         """
 
         predictions = self.model.predict(features)
+        preds = [int(elem) for elem in predictions]
+        return preds
+    
+    def save(
+    self,
+    path: str = "challenge"
+) -> None:
+        """
+        Save trained model to disk.
 
-        return predictions.astype(int).tolist()
+        Args:
+            path:
+                Folder path.
+        """
+
+        
+        with open(path+'/model.pkl', "wb") as file:
+            pickle.dump(self, file)
+
+        with open(path+"/features.json", "w") as f:
+                json.dump(self._feature_columns, f)
