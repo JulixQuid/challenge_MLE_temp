@@ -6,3 +6,7 @@ numpy>=2.1
 pandas>=2.2
 scikit-learn>=1.5
 xgboost>=3.0
+
+pytest==7.4.4
+pytest-cov==4.1.0
+anyio==3.7.1
